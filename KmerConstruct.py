@@ -2,15 +2,18 @@
 
 import numpy as np
 from tqdm import tqdm
+import multiprocessing
+from multiprocessing import Pool, Process
 
 
 class KmerConstruct():
     
-    def __init__(self, ss, k):
+    def __init__(self, ss, k, n_threads=1):
         self.ss = ss
         self.k = k
         self.X = None
         self.X_first_j=None
+        self.n_threads=n_threads
 
     def build_kmer_list(self,ss,k):
         
@@ -49,27 +52,45 @@ class KmerConstruct():
         flattened_ss_kmers=[s_kmer for s_kmers in tqdm(ss_kmers) for s_kmer in s_kmers]
         return list(set(flattened_ss_kmers))
     
+    def fill_feature(self,batch):
+        for i in tqdm(batch):
+            for j in range(self.X.shape[1]):   
+                self.X[i,j]=self.ss_kmers[i].count(self.features[j])
+    
+    
     def constuct_feature_table(self,j_=None): #for different samples, merge their k-mer frequencies in one feature table. j: get the most discriminative kmers (features)
            
         if self.X is None:
             self.ss_kmers=self.build_kmer_list(self.ss,self.k)
+            self.features=self.get_all_uniq_kmers(self.ss_kmers)
+            self.X=np.zeros((len(self.ss_kmers),len(self.features)),dtype='int32')
             
-            features=self.get_all_uniq_kmers(self.ss_kmers)
-            
-            X=np.zeros((len(self.ss_kmers),len(features)))
             print('==constructing the full feature table==')
-            for i in tqdm(range(X.shape[0])): 
-                for j in range(X.shape[1]):            
-                    X[i,j]=self.ss_kmers[i].count(features[j])
-            self.X=X
+            processes=[]
+            batches=[]
+            for i in range(self.n_threads): 
+            	batch=range(int(self.X.shape[0]/self.n_threads)*i,int(self.X.shape[0]/self.n_threads)*(i+1))
+            	batches.append(batch)
+
+            for batch in batches:
+                print('A thread has started..')
+                if self.n_threads==1:
+                    self.fill_feature(batch) #non-paralle version
+                else:
+                    p=Process(target=self.fill_feature,args=(batch,))             
+                    p.start()
+            
+        
+                    
         
         if j_ is not None:
             #calculate no. of 0s for each column and sort by desc order
             X_t=self.X.T
             sum_zeros=[]
             print('==Getting the most discriminative features==')
-            for column in X_t:                
-                sum_zeros.append(len(self.ss_kmers)-np.count_nonzero(column))
+            col_len=len(self.ss_kmers)
+            for column in tqdm(X_t):  
+                sum_zeros.append(col_len-np.count_nonzero(column))
                 """
                 In latter versions I probably have to think about situations where all cells in the feature table don't contain any 0s
                 """
@@ -84,4 +105,3 @@ class KmerConstruct():
             self.X_first_j=new_X_t.T
             
                 
-

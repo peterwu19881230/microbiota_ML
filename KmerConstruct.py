@@ -53,33 +53,53 @@ class KmerConstruct():
         return list(set(flattened_ss_kmers))
     
     def fill_feature(self,batch):
-        for i in tqdm(batch):
-            for j in range(self.X.shape[1]):   
-                self.X[i,j]=self.ss_kmers[i].count(self.features[j])
+        X_batch=np.zeros((batch,len(self.features)),dtype='int32')
+        for i in tqdm(range(batch)):
+            for j in range(len(self.features)):   
+                X_batch[i,j]=self.ss_kmers[i].count(self.features[j])
+        
+        return X_batch
     
     
-    def constuct_feature_table(self,j_=None): #for different samples, merge their k-mer frequencies in one feature table. j: get the most discriminative kmers (features)
+    def constuct_feature_table(self,j_=None,remove_non_standard_nt=True): #for different samples, merge their k-mer frequencies in one feature table. j: get the most discriminative kmers (features)
            
         if self.X is None:
             self.ss_kmers=self.build_kmer_list(self.ss,self.k)
             self.features=self.get_all_uniq_kmers(self.ss_kmers)
-            self.X=np.zeros((len(self.ss_kmers),len(self.features)),dtype='int32')
+            
+            if remove_non_standard_nt:
+                new_features=[]
+                non_standard=['R','Y','K','M','S','W','B','D','H','V','N'] #http://www.hgmd.cf.ac.uk/docs/nuc_lett.html 
+                for i in range(len(self.features)):
+                    keep=True
+                    for nt in non_standard:
+                        if self.features[i].find(nt)!=-1:
+                            keep=False
+                            break
+                    
+                    if keep: new_features.append(self.features[i])
+                
+                self.features=new_features
+                    
             
             print('==constructing the full feature table==')
-            processes=[]
-            batches=[]
-            for i in range(self.n_threads): 
-            	batch=range(int(self.X.shape[0]/self.n_threads)*i,int(self.X.shape[0]/self.n_threads)*(i+1))
-            	batches.append(batch)
-
-            for batch in batches:
-                print('A thread has started..')
-                if self.n_threads==1:
-                    self.fill_feature(batch) #non-paralle version
-                else:
-                    p=Process(target=self.fill_feature,args=(batch,))             
-                    p.start()
             
+            self.X=[]
+            
+            if self.n_threads==1:
+                self.X=self.fill_feature(len(self.ss))
+            else:
+                processes=[]
+                num, div = len(self.ss_kmers), self.n_threads
+                batches=[num // div + (1 if x < num % div else 0)  for x in range (div)]
+                
+                pool = Pool(self.n_threads)
+                result = pool.map(self.fill_feature, batches)
+                                
+                for i in range(len(result)):
+                    self.X.extend(result[i])
+                
+                
         
                     
         

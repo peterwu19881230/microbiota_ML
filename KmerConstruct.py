@@ -14,6 +14,7 @@ class KmerConstruct():
         self.X = None
         self.X_first_j=None
         self.n_threads=n_threads
+        self.features=None
 
     def build_kmer_list(self,ss,k):
         
@@ -65,7 +66,10 @@ class KmerConstruct():
            
         if self.X is None:
             self.ss_kmers=self.build_kmer_list(self.ss,self.k)
-            self.features=self.get_all_uniq_kmers(self.ss_kmers)
+            if self.features is None:
+                self.features=self.get_all_uniq_kmers(self.ss_kmers)
+            else:
+                print('==kmer features are already given==')
             
             if remove_non_standard_nt:
                 new_features=[]

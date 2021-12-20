@@ -6,8 +6,6 @@ import pandas as pd
 
 #pick a mock and do prediction on eg. genus
 new_KmerConstruct = pickle.load(open("../KmerConstruct_4mer.pickle","rb" ))
-#model= pickle.load(open("../KmerNBmodel_4mer.pickle","rb" ))
-#model=
 
 #construct test_X (k-mer frequency table) from mock daxxwtax
 label_mock2,seq_mock2=readFasta('../tax-credit-data/data/mock-community/mock-2/dna-sequences.fasta') 
@@ -22,10 +20,12 @@ KmerConstruct_mock2.constuct_feature_table()
 X_test=KmerConstruct_mock2.X
 #map the features to those of the classifiers'
 
-
+#model= pickle.load(open("../KmerNBmodel_4mer.pickle","rb" ))
+#models=
 y=answers_
-y_pred = model.predict(X_test) 
-get_accu_f1(y_pred,y)
+for model in models:
+    y_pred = model.predict(X_test) 
+    get_accu_f1(y_pred,y)
 
 
 

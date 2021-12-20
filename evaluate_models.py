@@ -6,8 +6,8 @@ import pandas as pd
 
 #pick a mock and do prediction on eg. genus
 new_KmerConstruct = pickle.load(open("../KmerConstruct_4mer.pickle","rb" ))
-model= pickle.load(open("../KmerNBmodel_4mer.pickle","rb" ))
-
+#model= pickle.load(open("../KmerNBmodel_4mer.pickle","rb" ))
+#model=
 
 #construct test_X (k-mer frequency table) from mock daxxwtax
 label_mock2,seq_mock2=readFasta('../tax-credit-data/data/mock-community/mock-2/dna-sequences.fasta') 

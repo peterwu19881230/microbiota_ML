@@ -8,13 +8,16 @@ from multiprocessing import Pool, Process
 
 class KmerConstruct():
     
-    def __init__(self, ss, k, n_threads=1):
+    def __init__(self, ss, k, n_threads=1,remove_non_standard_nt=True):
         self.ss = ss
+        self.ss_kmers=None
         self.k = k
         self.X = None
         self.X_first_j=None
         self.n_threads=n_threads
         self.features=None
+        self.remove_non_standard_nt=remove_non_standard_nt
+        self.non_standard=['R','Y','K','M','S','W','B','D','H','V','N'] #http://www.hgmd.cf.ac.uk/docs/nuc_lett.html 
 
     def build_kmer_list(self,ss,k):
         
@@ -33,7 +36,13 @@ class KmerConstruct():
             s_kmer=[]
             for i in range(0,len(s)-k+1):
                 kmer=s[i:i+k]
-                s_kmer.append(kmer)
+                keep=True
+                if self.remove_non_standard_nt:
+                    for nt in self.non_standard:
+                        if kmer.find(nt)!=-1:
+                            keep=False
+                            break
+                    if keep: s_kmer.append(kmer)
             
             ss_kmers.append(s_kmer)
         return ss_kmers
@@ -62,7 +71,7 @@ class KmerConstruct():
         return X_batch
     
     
-    def constuct_feature_table(self,j_=None,remove_non_standard_nt=True): #for different samples, merge their k-mer frequencies in one feature table. j: get the most discriminative kmers (features)
+    def constuct_feature_table(self,j_=None): #for different samples, merge their k-mer frequencies in one feature table. j: get the most discriminative kmers (features)
            
         if self.X is None:
             self.ss_kmers=self.build_kmer_list(self.ss,self.k)
@@ -71,12 +80,11 @@ class KmerConstruct():
             else:
                 print('==kmer features are already given==')
             
-            if remove_non_standard_nt:
+            if self.remove_non_standard_nt:
                 new_features=[]
-                non_standard=['R','Y','K','M','S','W','B','D','H','V','N'] #http://www.hgmd.cf.ac.uk/docs/nuc_lett.html 
                 for i in range(len(self.features)):
                     keep=True
-                    for nt in non_standard:
+                    for nt in self.non_standard:
                         if self.features[i].find(nt)!=-1:
                             keep=False
                             break

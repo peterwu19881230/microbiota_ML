@@ -98,31 +98,31 @@ class KmerConstruct():
             
             print('==constructing the full feature table==')
             
-
-            #compute rows, cols, values -> convert to a sparse matrix later              
-            rows_ = [i for i in range(len(self.ss_kmers))]
-            rows = list(itertools.chain.from_iterable(itertools.repeat(i, len(self.features)) for i in rows_))    
-            cols=[j for j in range(len(self.features))]*len(self.ss_kmers)
+            self.rows_ = [i for i in range(len(self.ss_kmers))]
             
             if self.n_threads==1:
-                values=self.fill_feature(rows_)
+                values=self.fill_feature(self.rows_)
             else:
                 values=[]
                 batch_size=len(self.ss_kmers)//self.n_threads
-                batch_index_list = [rows_[i:i + batch_size] for i in range(0, len(rows_), batch_size)]  
+                batch_index_list = [self.rows_[i:i + batch_size] for i in range(0, len(self.rows_), batch_size)]  
                 pool = Pool(self.n_threads)
                 result = pool.map(self.fill_feature, batch_index_list)
                                 
                 for i in range(len(result)):
                     values.extend(result[i]) 
 
-            self.X_packed=(rows,cols,values)
+                self.values=values
             
         
     def unpack_feature_table(self,j_=None):
-        rows,cols,values=self.X_packed
+        #compute rows, cols, values -> convert to a sparse matrix later              
+        
+        rows = list(itertools.chain.from_iterable(itertools.repeat(i, len(self.features)) for i in self.rows_))    
+        cols=[j for j in range(len(self.features))]*len(self.ss_kmers)
+
         print('==unpacking feature table==')         
-        self.X=sparse.csr_matrix((values, (rows, cols)), shape=(len(self.ss_kmers), len(self.features))).toarray()
+        self.X=sparse.csr_matrix((self.values, (rows, cols)), shape=(len(self.ss_kmers), len(self.features))).toarray()
         
         if  j_ is not None:
             #calculate no. of 0s for each column and sort by desc order

@@ -3,6 +3,7 @@
 
 
 import os
+from os.path import exists
 #os.chdir('/Users/ifanwu/Documents/CS_MS_TAMU/microbiota_ML/github') #macos only
 
 from utility import readFasta, get_label_list, get_accu_f1
@@ -18,15 +19,22 @@ import pickle
 
 
 if __name__ == '__main__':
-	execfile('load_silva_data.py')
+    with open('load_silva_data.py') as infile:
+        exec(infile.read())
+
     ks=[4,6,7,8,9,10,11,12,14,16,18,32,64,100]
+
     n_threads=20
     #construct kmer feature table 
     for k in ks:
-        #construct kmer feature table
-        new_KmerConstruct=KmerConstruct(ss,k,n_threads=n_threads)
-        new_KmerConstruct.constuct_feature_table()
-        with open('../KmerConstruct_'+ str(k) + 'mer.pickle', 'wb') as handle:
-            pickle.dump(new_KmerConstruct, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        filename='../KmerConstruct_'+ str(k) + 'mer.pickle'
+        if not exists(filename):        
+            #construct kmer feature table
+            new_KmerConstruct=KmerConstruct(ss,k,n_threads=n_threads)
+            new_KmerConstruct.constuct_feature_table()
+            print('saving the file...')
+            with open(filename,'wb') as handle:
+                pickle.dump(new_KmerConstruct, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            print('kmer freq for k=',k,' is done')
         
 

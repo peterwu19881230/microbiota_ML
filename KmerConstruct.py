@@ -128,7 +128,7 @@ class KmerConstruct():
                     self.all_freq_tuple.extend(result)
             
         
-    def unpack_feature_table(self,j_=None):
+    def unpack_feature_table(self,j_=None): #unpacking on my mac/pc will crash
         print('==Unpacking the feature table==')
         self.X = sparse.lil_matrix((len(self.ss_kmers),len(self.features)), dtype=int)
         for i,row in enumerate(tqdm(self.all_freq_tuple)):

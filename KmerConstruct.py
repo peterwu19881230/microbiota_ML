@@ -96,13 +96,16 @@ class KmerConstruct():
                                   
             
             print('==constructing the full feature table==')
-            all_freq_dict=self.count_all_freq(self.ss_kmers)
+            print('getting kmer frequencies')
+            all_freq_dict=self.count_all_freq(self.ss_kmers) #there's a tqdm within this function
             
+            print('converting kmers into feature indices')
             all_freq_tuple=[]
-            for freq_dict in all_freq_dict:
+            for freq_dict in tqdm(all_freq_dict):
                 freq_tuple=[]
                 for k, v in freq_dict.items():
-                    freq_tuple.append((k, v))
+                    ind=self.features.index(k)
+                    freq_tuple.append((ind, v))
                 all_freq_tuple.append(freq_tuple)
                     
             self.all_freq_tuple=all_freq_tuple
@@ -111,13 +114,9 @@ class KmerConstruct():
     def unpack_feature_table(self,j_=None):
         print('==Unpacking the feature table==')
         self.X = sparse.lil_matrix((len(self.ss_kmers),len(self.features)), dtype=int)
-        for i,row in (enumerate(self.all_freq_tuple)):
-            print(row)
+        for i,row in enumerate(tqdm(self.all_freq_tuple)):
             for col in row:
-                 print(i)
-                 print(col)
-                 print(col[0])
-                 self.X[i, self.features.index(col[0])] = col[1]
+                 self.X[i, col[0]] = col[1]
         
         if  j_ is not None:
             #calculate no. of 0s for each column and sort by desc order

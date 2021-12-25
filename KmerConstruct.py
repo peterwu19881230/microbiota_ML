@@ -72,6 +72,16 @@ class KmerConstruct():
         return sorted(list(set(flattened_ss_kmers))) #it has to be sorted. Otherwise set gives different orders at each run
     
     
+    def convert_kmer_into_index(self,batch_freq_dict):
+        batch_freq_tuple=[]
+        for freq_dict in tqdm(batch_freq_dict):
+            freq_tuple=[]
+            for k, v in freq_dict.items():
+                ind=self.features.index(k)
+                freq_tuple.append((ind, v))
+            batch_freq_tuple.append(freq_tuple)
+        return batch_freq_tuple
+    
     def constuct_feature_table(self): #for different samples, merge their k-mer frequencies in one feature table. j: get the most discriminative kmers (features)
            
         if self.X is None:
@@ -99,16 +109,23 @@ class KmerConstruct():
             print('getting kmer frequencies')
             all_freq_dict=self.count_all_freq(self.ss_kmers) #there's a tqdm within this function
             
+            
             print('converting kmers into feature indices')
-            all_freq_tuple=[]
-            for freq_dict in tqdm(all_freq_dict):
-                freq_tuple=[]
-                for k, v in freq_dict.items():
-                    ind=self.features.index(k)
-                    freq_tuple.append((ind, v))
-                all_freq_tuple.append(freq_tuple)
-                    
-            self.all_freq_tuple=all_freq_tuple
+            self.all_freq_tuple=[]
+            
+            if self.n_threads==1:           
+                self.all_freq_tuple=self.convert_kmer_into_index(batch_freq_dict=all_freq_dict) #there's a tqdm within this function
+            else:                
+                #split all_freq_dict into chunks of size n (last chunk<=n)
+                batch_freq_dict_list=[]
+                n=len(all_freq_dict)//self.n_threads
+                for i in range(0,len(all_freq_dict),len(all_freq_dict)//self.n_threads):
+                    batch_freq_dict_list.append(all_freq_dict[i:i+n])
+
+                pool = Pool(self.n_threads)
+                results=pool.map(self.convert_kmer_into_index,batch_freq_dict_list)
+                for result in results:  
+                    self.all_freq_tuple.extend(result)
             
         
     def unpack_feature_table(self,j_=None):

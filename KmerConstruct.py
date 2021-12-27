@@ -82,6 +82,14 @@ class KmerConstruct():
             batch_freq_tuple.append(freq_tuple)
         return batch_freq_tuple
     
+    
+    def fill_feature(self,batch_freq_tuple):
+        X = sparse.lil_matrix((len(batch_freq_tuple),len(self.features)), dtype=int)
+        for i,row in enumerate(tqdm(batch_freq_tuple)):
+            for col in row:
+                 X[i, col[0]] = col[1]
+        return X
+    
     def constuct_feature_table(self): #for different samples, merge their k-mer frequencies in one feature table. j: get the most discriminative kmers (features)
            
         if self.X is None:
@@ -130,10 +138,20 @@ class KmerConstruct():
         
     def unpack_feature_table(self,j_=None): #unpacking on my mac/pc will crash
         print('==Unpacking the feature table==')
-        self.X = sparse.lil_matrix((len(self.ss_kmers),len(self.features)), dtype=int)
-        for i,row in enumerate(tqdm(self.all_freq_tuple)):
-            for col in row:
-                 self.X[i, col[0]] = col[1]
+        
+        if self.n_threads==1:
+            self.X=self.fill_feature(self.all_freq_tuple)
+            
+        else:
+            batch_freq_tuple_list=[]
+            n=len(self.all_freq_tuple)//self.n_threads
+            for i in range(0,len(self.all_freq_tuple),len(self.all_freq_tuple)//self.n_threads):
+                batch_freq_tuple_list.append(self.all_freq_tuple[i:i+n])
+            pool = Pool(self.n_threads)
+            results=pool.map(self.fill_feature,batch_freq_tuple_list)
+            self.X=sparse.vstack(tuple(results))
+
+        
         
         if  j_ is not None:
             #calculate no. of 0s for each column and sort by desc order

@@ -1,8 +1,136 @@
-#try to write my self-written multinomialNB
+#get subset of Silva for mock-2 prediction
 import numpy as np
 from utility import readFasta, get_label_list, get_accu_f1
 from KmerConstruct import KmerConstruct
-from tqdm import tqdm
+from multinomialNB import multinomialNB
+import pandas as pd
+import pickle
+
+#seqs, labels from mock-2
+label_mock2,seq_mock2=readFasta('../tax-credit-data/data/mock-community/mock-2/dna-sequences.fasta') 
+taxonomy_table=pd.read_csv('../tax-credit-data/data/mock-community/mock-2/matched-sequence-taxonomies.tsv',sep='\t')
+labels=taxonomy_table['Standard Taxonomy'].tolist()
+answers_=get_label_list(labels,type_='g__')
+
+#pick sequences, labels that match mock-2 from Silva
+with open('load_silva_data.py') as infile:
+    exec(infile.read()) #ss, genus_labels are given here
+    
+indices=[]
+for i,label in enumerate(genus_labels): 
+ if label in answers_: 
+     indices.append(i)
+
+y=genus_labels[indices]
+
+#construct X
+k=4 #k=8 takes >10min for feature construction
+ss_subset=[ss[i] for i in indices]
+new_KmerConstruct=KmerConstruct(ss_subset,k=k)
+new_KmerConstruct.constuct_feature_table()    
+new_KmerConstruct.unpack_feature_table()
+X=new_KmerConstruct.X 
+
+
+#train
+NB=multinomialNB(X_train=X,y_train=y,alpha=0.01)
+NB.train()
+
+
+#predict
+#construct X_test (k-mer frequency table) from mock data
+KmerConstruct_mock2=KmerConstruct(seq_mock2,k=k,n_threads=1)
+KmerConstruct_mock2.features=new_KmerConstruct.features #map the k-mer features to those of the classifier's
+KmerConstruct_mock2.constuct_feature_table()
+KmerConstruct_mock2.unpack_feature_table()
+
+X_test=KmerConstruct_mock2.X
+y_test=answers_
+
+
+y_pred=NB.test(X_test=X_test.A)
+get_accu_f1(y_pred,y_test) 
+
+
+from sklearn.naive_bayes import MultinomialNB
+model = MultinomialNB(alpha=0.1) #alpha=5, 1, 0.1 make no difference
+model.fit(X, y)
+y_pred = model.predict(X_test.A)
+get_accu_f1(y_pred,y_test)
+
+#with open('../KmerNBmodel_'+ str(k) + 'mer.pickle', 'wb') as handle:
+#    pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+
+#sklearn decision tree (currently the best model: accu: 0.95, F1: 0.97)
+from sklearn.tree import DecisionTreeClassifier
+model=DecisionTreeClassifier(random_state=0)
+model.fit(X, y)
+y_pred = model.predict(X_test.A) 
+get_accu_f1(y_pred,y)
+
+
+#sklearn gradient boosting (accu: 0.90, F1: 0.95))
+from sklearn.ensemble import GradientBoostingClassifier
+model=GradientBoostingClassifier(n_estimators=50, learning_rate=0.1,max_depth=1, random_state=0)
+model.fit(X, y)
+y_pred = model.predict(X_test.A) 
+get_accu_f1(y_pred,y)
+
+
+#perfect classifier
+
+
+
+
+#build my NB on full data (not done)
+"""
+import numpy as np
+from utility import readFasta, get_label_list, get_accu_f1
+from KmerConstruct import KmerConstruct
+from multinomialNB import multinomialNB
+import pandas as pd
+
+
+with open('load_silva_data.py') as infile:
+    exec(infile.read())
+    
+k=4
+y=genus_labels
+new_KmerConstruct = pickle.load(open("../KmerConstruct_4mer.pickle","rb" ))
+X=new_KmerConstruct.X  
+
+
+#train
+NB=multinomialNB(X[0:1000],y[0:1000])
+NB.train()
+
+
+
+#predict using mock2
+
+#construct X_test (k-mer frequency table) from mock data
+label_mock2,seq_mock2=readFasta('../tax-credit-data/data/mock-community/mock-2/dna-sequences.fasta') 
+taxonomy_table=pd.read_csv('../tax-credit-data/data/mock-community/mock-2/matched-sequence-taxonomies.tsv',sep='\t')
+labels=taxonomy_table['Standard Taxonomy'].tolist()
+answers_=get_label_list(labels,type_='g__')
+
+KmerConstruct_mock2=KmerConstruct(seq_mock2,k=4,n_threads=1)
+KmerConstruct_mock2.features=new_KmerConstruct.features #map the k-mer features to those of the classifier's
+KmerConstruct_mock2.constuct_feature_table()
+KmerConstruct_mock2.unpack_feature_table()
+
+X_test=KmerConstruct_mock2.X.A
+y_test=answers_
+
+
+y_pred=NB.test(X_test,y_test)
+
+get_accu_f1(y_pred,y)
+"""
+
+
 
 #toy data
 """
@@ -16,64 +144,13 @@ new_KmerConstruct=KmerConstruct(ss,k)
 new_KmerConstruct.constuct_feature_table()    
 new_KmerConstruct.unpack_feature_table()
 X=new_KmerConstruct.X  
+
+NB=multinomialNB(X_train=X,y_train=y)
+NB.train()
+y_pred=NB.test(X_test=X.A)
+get_accu_f1(y_pred,y) #training error
 """
 
-
-
-with open('load_silva_data.py') as infile:
-    exec(infile.read())
-    
-k=4
-y=genus_labels
-new_KmerConstruct=KmerConstruct(ss,k)
-new_KmerConstruct.constuct_feature_table() 
-new_KmerConstruct.unpack_feature_table()
-X=new_KmerConstruct.X  
-
-
-#train
-all_p_yi=[]
-all_p_feature_given_yi=[]
-alpha=0.1
-N=np.sum(X)
-n_features=X.shape[1]
-uniq_y=sorted(list(set(y)))
-for yi in tqdm(uniq_y):
-    
-    ind=[i for i, _y in enumerate(y) if _y == yi]
-    
-    #calculate prior probabilities for each class
-    all_p_yi.append(len(ind)/len(y))
-       
-    #calculate p(a kmer|a class) for each class
-    X_yi=X[ind]
-    p_feature_given_yi=[]
-    for i in range(X_yi.shape[1]):
-        feature_vec=X_yi[:,i].A
-        p_feature_given_yi.append((np.sum(feature_vec)+alpha)/(N+alpha*n_features))
-    
-    all_p_feature_given_yi.append(p_feature_given_yi)
-    
-
-
-#predict
-test_X=X.A[300:300+100]
-y_pred=[]
-for test_xi in tqdm(test_X):
-    log_prob_all_y=[]
-    for i,yi in enumerate(uniq_y): #for each class    
-        log_prob_yi=np.log(all_p_yi[i])    
-        for j,p_feature_given_yi in enumerate(all_p_feature_given_yi[i]): #for each feature
-            freq=test_xi[j]
-            if freq==0: freq+=alpha #not sure if this is the best smoothing
-            log_prob_yi+=freq*np.log(p_feature_given_yi) 
-        log_prob_all_y.append(log_prob_yi)
-    
-    prediction_ind=log_prob_all_y.index(max(log_prob_all_y))
-    prediction=uniq_y[prediction_ind]
-    y_pred.append(prediction)
-
-get_accu_f1(y_pred,y)
 
 
 
@@ -117,15 +194,14 @@ len(all_uniq_kmers)
 import jellyfish
 """
 
-#sparse matrix
+#test sparse matrix
+"""
 #https://stackoverflow.com/questions/43618956/constructing-sparse-matrix-from-list-of-lists-of-tuples
 import numpy as np
 import scipy.sparse as sparse
 import sys
 import itertools
 from tqdm import tqdm
-
-
 
 
 #alist = [[(1,10), (3,-3)],[(2,12)]]
@@ -143,31 +219,7 @@ for i,row in enumerate(alist):
          M[i, col[0]] = col[1]
 M.A
 sys.getsizeof(M)
-
-
-
-
-
-model=decisiontree
-
-
-#construct test_X (k-mer frequency table) from mock daxxwtax
-label_mock2,seq_mock2=readFasta('../tax-credit-data/data/mock-community/mock-2/dna-sequences.fasta') 
-taxonomy_table=pd.read_csv('../tax-credit-data/data/mock-community/mock-2/matched-sequence-taxonomies.tsv',sep='\t')
-labels=taxonomy_table['Standard Taxonomy'].tolist()
-answers_=get_label_list(labels,type_='g__')
-
-KmerConstruct_mock2=KmerConstruct(seq_mock2,k=4,n_threads=1)
-KmerConstruct_mock2.features=new_KmerConstruct.features #map the k-mer features to those of the classifier
-KmerConstruct_mock2.constuct_feature_table()
-
-X_test=KmerConstruct_mock2.X
-#map the features to those of the classifiers'
-
-
-y=answers_
-y_pred = model.predict(X_test) 
-get_accu_f1(y_pred,y)
+"""
 
 
 
@@ -232,44 +284,8 @@ def convert_seq_to_ind(seq):
 """
 
 
-
+##random subset of Silva
 """
-#train MB model
-from utility import readFasta, get_label_list, get_accu_f1
-from sklearn.naive_bayes import MultinomialNB
-
-X=new_KmerConstruct.X
-
-#remove to save memory
-del new_KmerConstruct
-
-y=genus_labels
-model = MultinomialNB()
-model.fit(X, y)
-
-y_pred = model.predict(X)
-get_accu_f1(y_pred,y)
-
-with open('../KmerNBmodel_'+ str(k) + 'mer.pickle', 'wb') as handle:
-    pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
-"""
-
-
-
-
-#some test data and helpers
-
-"""
-#count the distribution of the labels
-import collections
-counter = collections.Counter(genus_labels)
-print(counter)
-"""
-
-
-
-"""
-##sample a small subset of the data
 
 from numpy.random import default_rng
 
@@ -281,10 +297,8 @@ genus_labels_small=genus_labels[indices]
 """
 
 
-
-
+#random data (test if the program runs)
 """
-#larger test data
 import random
 ss=[]
 y=[]
@@ -292,4 +306,13 @@ for i in range(100):
     ss.append(''.join(random.choices('atcg',k=1000))) #generate a random sequence of length k
     y.append(random.choices([0,1,2],k=1)) #generate random labels
 y=np.array(y)
+"""
+
+#some test data and helpers
+
+"""
+#count the distribution of the labels
+import collections
+counter = collections.Counter(genus_labels)
+print(counter)
 """

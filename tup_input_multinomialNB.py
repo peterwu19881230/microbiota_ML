@@ -28,12 +28,14 @@ class tup_input_multinomialNB():
             ls_tutple_X_yi=[self.ls_tutple_X_train[i] for i in ind]
             N_yi=sum([tup[1] for tup_ls in ls_tutple_X_yi for tup in tup_ls])
             p_feature_given_yi=[]
-            for i in range(self.n_features): 
-                sum_feature_vec=0
-                for tup_ls in ls_tutple_X_yi:
-                    for tup in tup_ls:
-                        if tup[0]==i: sum_feature_vec+=tup[1]                           
-                p_feature_given_yi.append((sum_feature_vec+self.alpha)/(N_yi+self.alpha*self.n_features))
+            
+            all_sum_feature_vec=[0]*self.n_features  
+            for tup_ls in ls_tutple_X_yi:
+                for tup in tup_ls:
+                    all_sum_feature_vec[tup[0]]+=tup[1]
+                        
+            for i in range(self.n_features):             
+                p_feature_given_yi.append((all_sum_feature_vec[i]+self.alpha)/(N_yi+self.alpha*self.n_features))
             
             self.all_p_feature_given_yi.append(p_feature_given_yi)
         print('\n')

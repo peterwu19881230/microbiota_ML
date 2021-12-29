@@ -115,20 +115,20 @@ class KmerConstruct():
             
             print('==constructing the full feature table==')
             print('getting kmer frequencies')
-            all_freq_dict=self.count_all_freq(self.ss_kmers) #there's a tqdm within this function
+            self.all_freq_dict=self.count_all_freq(self.ss_kmers) #there's a tqdm within this function
             
             
             print('converting kmers into feature indices')
             self.all_freq_tuple=[]
             
             if self.n_threads==1:           
-                self.all_freq_tuple=self.convert_kmer_into_index(batch_freq_dict=all_freq_dict) #there's a tqdm within this function
+                self.all_freq_tuple=self.convert_kmer_into_index(batch_freq_dict=self.all_freq_dict) #there's a tqdm within this function
             else:                
-                #split all_freq_dict into chunks of size n (last chunk<=n)
+                #split self.all_freq_dict into chunks of size n (last chunk<=n)
                 batch_freq_dict_list=[]
-                n=len(all_freq_dict)//self.n_threads
-                for i in range(0,len(all_freq_dict),len(all_freq_dict)//self.n_threads):
-                    batch_freq_dict_list.append(all_freq_dict[i:i+n])
+                n=len(self.all_freq_dict)//self.n_threads
+                for i in range(0,len(self.all_freq_dict),len(self.all_freq_dict)//self.n_threads):
+                    batch_freq_dict_list.append(self.all_freq_dict[i:i+n])
 
                 pool = Pool(self.n_threads)
                 results=pool.map(self.convert_kmer_into_index,batch_freq_dict_list)

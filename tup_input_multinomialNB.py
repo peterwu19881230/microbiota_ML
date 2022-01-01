@@ -1,3 +1,7 @@
+"""
+This NB model allows list of tuples as input
+"""
+
 import numpy as np
 from tqdm import tqdm
 
@@ -61,5 +65,4 @@ class tup_input_multinomialNB():
             prediction_ind=log_prob_all_y.index(max(log_prob_all_y))
             prediction=self.uniq_y[prediction_ind]
             y_pred.append(prediction)
-        
         return y_pred

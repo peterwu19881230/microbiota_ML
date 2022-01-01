@@ -2,6 +2,7 @@ import pickle
 from utility import readFasta, get_label_list, get_accu_f1
 from KmerConstruct import KmerConstruct
 import pandas as pd
+from os.path import exists 
 
 
 #pick a mock and do prediction on eg. genus
@@ -14,19 +15,18 @@ labels=taxonomy_table['Standard Taxonomy'].tolist()
 answers_=get_label_list(labels,type_='g__')
 
 KmerConstruct_mock2=KmerConstruct(seq_mock2,k=4,n_threads=1)
-KmerConstruct_mock2.features=new_KmerConstruct.features #map the k-mer features to those of the classifier
-KmerConstruct_mock2.constuct_feature_table()
+KmerConstruct_mock2.construct_all_freq_dict()
+y_test=answers_
 
-X_test=KmerConstruct_mock2.X
 #map the features to those of the classifiers'
+ks=[4,6,7,8,9,10,11,12,14,16,18,32,64,100]
 
-#model= pickle.load(open("../KmerNBmodel_4mer.pickle","rb" ))
-#models=
-y=answers_
-for model in models:
-    y_pred = model.predict(X_test) 
-    get_accu_f1(y_pred,y)
-
+for k in ks:
+    filename='../NBmodel_'+ str(k) + 'mer.pickle'
+    if exists(filename):        
+        model = pickle.load(open(filename,"rb" ))
+        y_pred = model.predict(KmerConstruct_mock2.all_freq_dict) 
+        get_accu_f1(y_pred,y_test)
 
 
 #plot

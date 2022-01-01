@@ -1,6 +1,7 @@
 from dict_input_multinomialNB import dict_input_multinomialNB
 import pickle
 from os.path import exists 
+import numpy as np
 
 if __name__ == '__main__':
     

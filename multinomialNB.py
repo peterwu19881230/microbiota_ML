@@ -52,9 +52,10 @@ class multinomialNB():
                 else:
                     log_prob_yi=0
                 for j,p_feature_given_yi in enumerate(self.all_p_feature_given_yi[i]): #for each feature
-                    freq=test_xi[j]
-                    if freq==0: freq+=self.alpha #not sure if this is the best smoothing
-                    log_prob_yi+=freq*np.log(p_feature_given_yi) 
+                    freq=test_xi[j]                   
+                    if freq!=0: #If freq=0 just ignore adding the log likelyhood. Not sure if this is correct. Didn't see where any source clearly describes this
+                        log_prob_yi+=freq*np.log(p_feature_given_yi) 
+                        
                 log_prob_all_y.append(log_prob_yi)
             
             prediction_ind=log_prob_all_y.index(max(log_prob_all_y))

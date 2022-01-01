@@ -1,3 +1,7 @@
+"""
+This NB model allows list of dictionaries as input
+"""
+
 import numpy as np
 from tqdm import tqdm
 
@@ -64,17 +68,15 @@ class dict_input_multinomialNB():
                     log_prob_yi=np.log(self.all_prior_yi[i]) 
                 else:
                     log_prob_yi=0
-                for kmer in self.all_unique_kmers: #for each feature
-                    if kmer not in test_xi:
-                        freq=self.alpha
-                    else:
-                        freq=test_xi[kmer]
-                        
+                   
+                for kmer in test_xi:
+                    freq=test_xi[kmer]
+                    
                     if kmer not in self.all_p_feature_given_yi[i]:
                         prob=(self.alpha)/(self.N_yi_ls[i]+self.alpha*self.n_features)
                     else:
                         prob=self.all_p_feature_given_yi[i][kmer]
-                    
+                        
                     log_prob_yi+=freq*np.log(prob) 
                                 
                 log_prob_all_y.append(log_prob_yi)

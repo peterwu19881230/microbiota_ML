@@ -25,7 +25,7 @@ for k in ks:
     filename='../NBmodel_'+ str(k) + 'mer.pickle'
     if exists(filename):        
         model = pickle.load(open(filename,"rb" ))
-        y_pred = model.predict(KmerConstruct_mock2.all_freq_dict) 
+        y_pred = model.test(KmerConstruct_mock2.all_freq_dict) 
         get_accu_f1(y_pred,y_test)
 
 

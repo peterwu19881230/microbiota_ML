@@ -23,14 +23,14 @@ if __name__ == '__main__':
         exec(infile.read())
 
     ks=[4,6,7,8,9,10,11,12,14,16,18,32,64,100]
+    
     #construct kmer feature table 
     for k in ks:
         filename='../KmerConstruct_'+ str(k) + 'mer.pickle'
         if not exists(filename):        
             #construct kmer feature table
-            new_KmerConstruct=KmerConstruct(ss,k)
-            new_KmerConstruct.constuct_feature_table()
-            new_KmerConstruct.unpack_feature_table()
+            new_KmerConstruct=KmerConstruct(ss,k,n_threads=1)
+            new_KmerConstruct.construct_all_freq_dict()
             print('saving the file...')
             with open(filename,'wb') as handle:
                 pickle.dump(new_KmerConstruct, handle, protocol=pickle.HIGHEST_PROTOCOL)

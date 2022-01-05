@@ -21,7 +21,7 @@ y_test=answers_
 ks=[4,6,7,8,9,10,11,12,14,16,18,32,64,100]
 
 for k in ks:
-    filename='../NBmodel_'+ str(k) + 'mer.pickle'
+    filename='../models/NBmodel_'+ str(k) + 'mer.pickle'
     if exists(filename):        
         model = pickle.load(open(filename,"rb" ))
         KmerConstruct_mock2=KmerConstruct(seq_mock2,k=k,n_threads=1)

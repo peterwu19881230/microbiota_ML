@@ -21,6 +21,7 @@ class KmerConstruct():
         self.features=None
         self.remove_non_standard_nt=remove_non_standard_nt
         self.non_standard=['R','Y','K','M','S','W','B','D','H','V','N'] #http://www.hgmd.cf.ac.uk/docs/nuc_lett.html 
+        self.all_freq_dict=None
 
     def build_kmer_list(self,ss,k):
         
@@ -90,33 +91,40 @@ class KmerConstruct():
                  X[i, col[0]] = col[1]
         return X
     
+    
+    
+    def construct_all_freq_dict(self):
+        print('getting kmer frequencies')
+       
+        self.ss_kmers=self.build_kmer_list(self.ss,self.k)
+        if self.features is None:
+            self.features=self.get_all_uniq_kmers(self.ss_kmers)
+        else:
+            print('==kmer features are already given==')
+        
+        if self.remove_non_standard_nt:
+            new_features=[]
+            for i in range(len(self.features)):
+                keep=True
+                for nt in self.non_standard:
+                    if self.features[i].find(nt)!=-1:
+                        keep=False
+                        break
+                
+                if keep: new_features.append(self.features[i])
+            
+            self.features=new_features 
+        
+        self.all_freq_dict=self.count_all_freq(self.ss_kmers) #there's a tqdm within this function
+    
+    
     def constuct_feature_table(self): #for different samples, merge their k-mer frequencies in one feature table. j: get the most discriminative kmers (features)
            
-        if self.X is None:
-            self.ss_kmers=self.build_kmer_list(self.ss,self.k)
-            if self.features is None:
-                self.features=self.get_all_uniq_kmers(self.ss_kmers)
-            else:
-                print('==kmer features are already given==')
-            
-            if self.remove_non_standard_nt:
-                new_features=[]
-                for i in range(len(self.features)):
-                    keep=True
-                    for nt in self.non_standard:
-                        if self.features[i].find(nt)!=-1:
-                            keep=False
-                            break
-                    
-                    if keep: new_features.append(self.features[i])
-                
-                self.features=new_features 
-                                  
-            
+        if self.X is None:                                  
             print('==constructing the full feature table==')
-            print('getting kmer frequencies')
-            self.all_freq_dict=self.count_all_freq(self.ss_kmers) #there's a tqdm within this function
             
+            if self.all_freq_dict is None:
+                self.construct_all_freq_dict()
             
             print('converting kmers into feature indices')
             self.all_freq_tuple=[]

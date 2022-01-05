@@ -53,7 +53,7 @@ class multinomialNB():
                     log_prob_yi=0
                 for j,p_feature_given_yi in enumerate(self.all_p_feature_given_yi[i]): #for each feature
                     freq=test_xi[j]                   
-                    if freq!=0: #If freq=0 just ignore adding the log likelyhood. Not sure if this is correct. Didn't see where any source clearly describes this
+                    if freq!=0: #If freq=0 just ignore adding the log likelyhood
                         log_prob_yi+=freq*np.log(p_feature_given_yi) 
                         
                 log_prob_all_y.append(log_prob_yi)

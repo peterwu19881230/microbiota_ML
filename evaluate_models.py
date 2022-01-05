@@ -27,7 +27,10 @@ for k in ks:
         KmerConstruct_mock2=KmerConstruct(seq_mock2,k=k,n_threads=1)
         KmerConstruct_mock2.construct_all_freq_dict()
         y_pred = model.test(KmerConstruct_mock2.all_freq_dict) 
-        get_accu_f1(y_pred,y_test)
+        accu,f1=get_accu_f1(y_pred,y_test)
+        
+        print("Accuracy= ",accu," for k=",k) 
+        print("F1= ",f1," for k=",k)
 
 
 #plot

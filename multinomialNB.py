@@ -15,7 +15,7 @@ class multinomialNB():
         
     def train(self):
         self.all_prior_yi=[]
-        self.all_p_feature_given_yi=[]
+        self.all_logp_feature_given_yi=[]
         n_features=self.X_train.shape[1]
         self.uniq_y=sorted(list(set(self.y_train)))
         
@@ -31,12 +31,13 @@ class multinomialNB():
             #calculate p(a kmer|a class) for each class
             X_yi=self.X_train[ind]
             N_yi=np.sum(X_yi)
-            p_feature_given_yi=[]
+            logp_feature_given_yi=[]
             for i in range(X_yi.shape[1]):
                 feature_vec=X_yi[:,i].A
-                p_feature_given_yi.append((np.sum(feature_vec)+self.alpha)/(N_yi+self.alpha*n_features))
+                prob=(np.sum(feature_vec)+self.alpha)/(N_yi+self.alpha*n_features)
+                logp_feature_given_yi.append(np.log(prob))
             
-            self.all_p_feature_given_yi.append(p_feature_given_yi)
+            self.all_logp_feature_given_yi.append(logp_feature_given_yi)
         print('\n')
         print('-------------')
         print('training done')
@@ -51,10 +52,10 @@ class multinomialNB():
                     log_prob_yi=np.log(self.all_prior_yi[i])    
                 else:
                     log_prob_yi=0
-                for j,p_feature_given_yi in enumerate(self.all_p_feature_given_yi[i]): #for each feature
+                for j,logp_feature_given_yi in enumerate(self.all_logp_feature_given_yi[i]): #for each feature
                     freq=test_xi[j]                   
                     if freq!=0: #If freq=0 just ignore adding the log likelyhood
-                        log_prob_yi+=freq*np.log(p_feature_given_yi) 
+                        log_prob_yi+=freq*logp_feature_given_yi
                         
                 log_prob_all_y.append(log_prob_yi)
             

@@ -1,4 +1,4 @@
-#this class contains kmer related functions
+#basic kmer related functions
 
 import numpy as np
 from tqdm import tqdm
@@ -22,6 +22,7 @@ class KmerConstruct():
         self.remove_non_standard_nt=remove_non_standard_nt
         self.non_standard=['R','Y','K','M','S','W','B','D','H','V','N'] #http://www.hgmd.cf.ac.uk/docs/nuc_lett.html 
         self.all_freq_dict=None
+        self.discrit_freq_dict=None
 
     def build_kmer_list(self,ss,k):
         
@@ -116,7 +117,7 @@ class KmerConstruct():
             self.features=new_features 
         
         self.all_freq_dict=self.count_all_freq(self.ss_kmers) #there's a tqdm within this function
-    
+        
     
     def constuct_feature_table(self): #for different samples, merge their k-mer frequencies in one feature table. j: get the most discriminative kmers (features)
            
@@ -144,42 +145,6 @@ class KmerConstruct():
                     self.all_freq_tuple.extend(result)
             
         
-    def unpack_feature_table(self,j_=None): #unpacking on my mac/pc will crash
-        print('==Unpacking the feature table==')
-        
-        if self.n_threads==1:
-            self.X=self.fill_feature(self.all_freq_tuple)
-            
-        else:
-            batch_freq_tuple_list=[]
-            n=len(self.all_freq_tuple)//self.n_threads
-            for i in range(0,len(self.all_freq_tuple),len(self.all_freq_tuple)//self.n_threads):
-                batch_freq_tuple_list.append(self.all_freq_tuple[i:i+n])
-            pool = Pool(self.n_threads)
-            results=pool.map(self.fill_feature,batch_freq_tuple_list)
-            self.X=sparse.vstack(tuple(results))
 
-        
-        
-        if  j_ is not None:
-            #calculate no. of 0s for each column and sort by desc order
-            X_t=self.X.T
-            sum_zeros=[]
-            print('==Getting the most discriminative features==')
-            col_len=len(self.ss_kmers)
-            for column in tqdm(X_t):  
-                sum_zeros.append(col_len-np.count_nonzero(column))
-                """
-                In latter versions I probably have to think about situations where all cells in the feature table don't contain any 0s
-                """
-            
-            new_X_t=[]
-            while j_ != 0:
-                col_index=sum_zeros.index(max(sum_zeros))
-                sum_zeros.pop(col_index)
-                new_X_t.append(X_t[col_index])
-                j_-=1
-            new_X_t=np.array(new_X_t)    
-            self.X_first_j=new_X_t.T
             
                 

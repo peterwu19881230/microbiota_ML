@@ -1,45 +1,32 @@
 #get subset of Silva for mock-2 prediction
+from test_data import *
 import numpy as np
-from utility import readFasta, get_label_list, get_accu_f1
+from utility import readFasta, get_label_list, get_accu_f1, get_f1
 from KmerConstruct import KmerConstruct
+from KmerFeatureEng import KmerFeatureEng
 from multinomialNB import multinomialNB
+from dict_input_multinomialNB import dict_input_multinomialNB
 import pandas as pd
 import pickle
 
-#seqs, labels from mock-2
-label_mock2,seq_mock2=readFasta('../tax-credit-data/data/mock-community/mock-2/dna-sequences.fasta') 
-taxonomy_table=pd.read_csv('../tax-credit-data/data/mock-community/mock-2/matched-sequence-taxonomies.tsv',sep='\t')
-labels=taxonomy_table['Standard Taxonomy'].tolist()
-answers_=get_label_list(labels,type_='g__')
-
-#pick sequences, labels that match mock-2 from Silva
-with open('load_silva_data.py') as infile:
-    exec(infile.read()) #ss, genus_labels are given here
-    
-indices=[]
-for i,label in enumerate(genus_labels): 
- if label in answers_: 
-     indices.append(i)
-
-y=genus_labels[indices]
 
 #construct X
 k=4 #k=8 takes >10min for feature construction
 ss_subset=[ss[i] for i in indices]
-new_KmerConstruct=KmerConstruct(ss_subset,k=k)
+new_KmerConstruct=KmerFeatureEng(answers_,ss_subset,k=k)
 new_KmerConstruct.constuct_feature_table()    
 new_KmerConstruct.unpack_feature_table()
 X=new_KmerConstruct.X 
-
+y=y_mock2
 
 #train
-NB=multinomialNB(X_train=X,y_train=y,alpha=0.01)
+NB=multinomialNB(X_train=X,y_train=y,alpha=0.1,include_prior=True) #for current test include_prior=False doesn't make a difference
 NB.train()
 
 
 #predict
 #construct X_test (k-mer frequency table) from mock data
-KmerConstruct_mock2=KmerConstruct(seq_mock2,k=k,n_threads=1)
+KmerConstruct_mock2=KmerFeatureEng(answers_,seq_mock,k=k,n_threads=1)
 KmerConstruct_mock2.features=new_KmerConstruct.features #map the k-mer features to those of the classifier's
 KmerConstruct_mock2.constuct_feature_table()
 KmerConstruct_mock2.unpack_feature_table()
@@ -52,35 +39,143 @@ y_pred=NB.test(X_test=X_test.A)
 get_accu_f1(y_pred,y_test) 
 
 
-from sklearn.naive_bayes import MultinomialNB
+
+
+#train dict_input_multinomialNB 
+from dict_input_multinomialNB import dict_input_multinomialNB
+
+k=4
+new_KmerConstruct=KmerConstruct(ss_subset,k=k)
+new_KmerConstruct.construct_all_freq_dict()
+dict_NB=dict_input_multinomialNB(ls_dict_X_train=new_KmerConstruct.all_freq_dict,n_features=len(new_KmerConstruct.features),y_train=y,alpha=0.1,include_prior=True) 
+dict_NB.train()
+
+
+#construct X_test (k-mer frequency table) from mock data
+KmerConstruct_mock=KmerConstruct(seq_mock,k=k,n_threads=1)
+KmerConstruct_mock.construct_all_freq_dict()
+
+y_pred=dict_NB.test(ls_dict_X_test=KmerConstruct_mock.all_freq_dict)
+get_accu_f1(y_pred,y_test) #accu: 0.8, F1: 0.88
+
+
+
+#use the most discriminative k to train the model
+
+
+##use mini dataset
+k=4
+new_KmerConstruct=KmerFeatureEng(y_mini,ss_mini,k=k)
+
+#dropping this to 0.9 yields almost no accuracy at all. why? 
+#is the implementation of construct_discrit_freq_dict() even correct?
+#maybe I can separate different discriminative kmer approaches in another class
+new_KmerConstruct.construct_discrit_freq_dict(remain=.9) 
+
+dict_NB=dict_input_multinomialNB(ls_dict_X_train=new_KmerConstruct.discrit_freq_dict,n_features=len(new_KmerConstruct.discrit_kmer_no_labels),y_train=y_mini,alpha=0.1,include_prior=True) 
+dict_NB.train()        
+
+
+y_pred=dict_NB.test(ls_dict_X_test=new_KmerConstruct.all_freq_dict) #list is correct but prediction for each sample is wrong given remain=0.5: [0, 0, 0, 1, 1, 0, 2, 0, 2]
+get_accu_f1(y_pred,y_mini) 
+
+
+
+
+
+##use larger dataset
+k=32
+new_KmerConstruct=KmerFeatureEng(y_mock2,ss_subset,k=k)
+
+#dropping this to 0.9 yields almost no accuracy at all. why? 
+#is the implementation of construct_discrit_freq_dict() even correct?
+#maybe I can separate different discriminative kmer approaches in another class
+new_KmerConstruct.construct_discrit_freq_dict(remain=1) 
+
+dict_NB=dict_input_multinomialNB(ls_dict_X_train=new_KmerConstruct.discrit_freq_dict,n_features=len(new_KmerConstruct.discrit_kmer_no_labels),y_train=y_mock2,alpha=0.1,include_prior=True) 
+dict_NB.train()        
+
+KmerConstruct_mock=KmerConstruct(seq_mock,k=k,n_threads=1)
+KmerConstruct_mock.construct_all_freq_dict()
+
+y_pred=dict_NB.test(ls_dict_X_test=KmerConstruct_mock.all_freq_dict)
+get_accu_f1(y_pred,y_test_mock2) #accu: 0.16, F1: 0.27586
+
+
+
+
+
+
+
+
+
+
+
+#train dict_input_multinomialNB using complete silva data
+new_KmerConstruct = pickle.load(open("../KmerConstruct_4mer.pickle","rb" ))
+y=genus_labels
+
+
+#train
+dict_NB=dict_input_multinomialNB(ls_dict_X_train=new_KmerConstruct.all_freq_dict,n_features=len(new_KmerConstruct.features),y_train=y,alpha=0.1,include_prior=True) 
+dict_NB.train() #15min 27s
+
+#predict
+#construct X_test (k-mer frequency table) from mock data
+k=4
+KmerConstruct_mock2=KmerConstruct(seq_mock2,k=k,n_threads=1)
+KmerConstruct_mock2.construct_all_freq_dict()
+
+y_test=answers_
+
+y_pred=dict_NB.test(ls_dict_X_test=KmerConstruct_mock2.all_freq_dict) # 1 min 22 s
+get_accu_f1(y_pred,y_test) #Accuracy=  0.2916666666666667 F1=  0.45161290322580644
+
+
+
+
+
+from sklearn.naive_bayes import MultinomialNB #accu: 0.8, F1: 0.88
 model = MultinomialNB(alpha=0.1) #alpha=5, 1, 0.1 make no difference
 model.fit(X, y)
 y_pred = model.predict(X_test.A)
 get_accu_f1(y_pred,y_test)
 
-#with open('../KmerNBmodel_'+ str(k) + 'mer.pickle', 'wb') as handle:
-#    pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 
-#sklearn decision tree (currently the best model: accu: 0.95, F1: 0.97)
+
+
+#sklearn decision tree #accu: 0.8, F1: 0.88
 from sklearn.tree import DecisionTreeClassifier
 model=DecisionTreeClassifier(random_state=0)
 model.fit(X, y)
 y_pred = model.predict(X_test.A) 
-get_accu_f1(y_pred,y)
+get_accu_f1(y_pred,y_test)
 
 
-#sklearn gradient boosting (accu: 0.90, F1: 0.95))
+#sklearn gradient boosting  #accu: 0.76, F1: 0.86
 from sklearn.ensemble import GradientBoostingClassifier
 model=GradientBoostingClassifier(n_estimators=50, learning_rate=0.1,max_depth=1, random_state=0)
 model.fit(X, y)
 y_pred = model.predict(X_test.A) 
-get_accu_f1(y_pred,y)
+get_accu_f1(y_pred,y_test)
 
+
+#sklearn random forest
+from sklearn.ensemble import RandomForestClassifier
+model=RandomForestClassifier(n_estimators=100,max_depth=30, random_state=102)
+model.fit(X, y)
+y_pred = model.predict(X_test.A) 
+get_accu_f1(y_pred,y_test)
 
 #perfect classifier
-
+#if there is no identical sequence with different labels, accu, f1 should both be 1 
+for i,seq1 in enumerate(seq_mock2):
+    for j,seq2 in enumerate(seq_mock2):
+        if i!=j and seq1==seq2:
+            print("seq",i," ",j,"is identical")
+#=> True
 
 
 
@@ -132,15 +227,43 @@ get_accu_f1(y_pred,y)
 
 
 
+#compare my multinomialNB with sklearn's using toy data
+
 #toy data
-"""
-#raw data
-ss=['atcgatat','cgatcgcg','atcgcgat','gatcgaga','gatctctc','gatcgatc','tacgcgcg','tatatacg','cgtatacg']
-y=[0,0,0,1,1,1,2,2,2]
-k=4
+from multinomialNB import multinomialNB
+
+#raw data is loaded from test/test_data.py
+
 
 #construct X
-new_KmerConstruct=KmerConstruct(ss,k)
+new_KmerConstruct=KmerFeatureEng(ss_mini)
+new_KmerConstruct.constuct_feature_table()    
+new_KmerConstruct.unpack_feature_table()
+X=new_KmerConstruct.X  
+
+NB=multinomialNB(X_train=X,y_train=y_mini)
+NB.train()
+y_pred=NB.test(X_test=X.A)
+get_accu_f1(y_pred,y) #training error
+
+
+from sklearn.naive_bayes import MultinomialNB #accu: 0.8, F1: 0.88
+model = MultinomialNB(alpha=0.1) #alpha=5, 1, 0.1 make no difference
+model.fit(X, y)
+y_pred = model.predict(X.A)
+get_accu_f1(y_pred,y)
+
+
+#compare my multinomialNB with sklearn's using mid-sized toy data
+
+#toy data
+from multinomialNB import multinomialNB
+
+#raw data is loaded from test/test_data.py
+
+
+#construct X
+new_KmerConstruct=KmerFeatureEng(ss_med,k=4)
 new_KmerConstruct.constuct_feature_table()    
 new_KmerConstruct.unpack_feature_table()
 X=new_KmerConstruct.X  
@@ -149,7 +272,15 @@ NB=multinomialNB(X_train=X,y_train=y)
 NB.train()
 y_pred=NB.test(X_test=X.A)
 get_accu_f1(y_pred,y) #training error
-"""
+
+
+from sklearn.naive_bayes import MultinomialNB #accu: 0.8, F1: 0.88
+model = MultinomialNB(alpha=0.1) #alpha=5, 1, 0.1 make no difference
+model.fit(X, y)
+y_pred = model.predict(X.A)
+get_accu_f1(y_pred,y)
+
+
 
 
 

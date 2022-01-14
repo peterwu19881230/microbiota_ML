@@ -35,6 +35,23 @@ def get_label_list(labels,type_='g__'):
     return type_labels
 
 
+def get_f1(answer_list,prediction_list):
+    #The following is the same as implemented in the 2018 q2-classifier paper
+    #====================
+    set1=set(answer_list)
+    set2=set(prediction_list)
+    
+    TP=len(set1 & set2)
+    FP=len(set2.difference(set1))
+    FN=len(set1.difference(set2))
+    #====================
+    
+    f1=TP/(TP+0.5*(FP+FN))
+    
+    #print("F1= ",f1)
+    
+    return f1
+
 
 
 def get_accu_f1(answer_list,prediction_list):

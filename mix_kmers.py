@@ -25,7 +25,7 @@ for i in tqdm(range(no_samples)): #tqdm doesn't show up here. Don't know why
     
 
 
-filename='../kmer_feature_objects/NBmodel_mixed_mer.pickle'
+filename='../kmer_feature_objects/KmerFeatureEng_all_mer.pickle'
 print('saving the file...')
 with open(filename,'wb') as handle:
     pickle.dump(mixed_feature_lists, handle, protocol=pickle.HIGHEST_PROTOCOL)

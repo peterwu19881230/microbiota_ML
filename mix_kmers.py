@@ -8,7 +8,7 @@ all_kmer_feature_lists=[]
 for k in [4,6,7,8,9,10,11,12,14,16,18,32,64,100]:
     
     
-    filename='../kmer_feature_objects/FeatureEng_'+ str(k) + 'mer.pickle'
+    filename='../kmer_feature_objects/KmerFeatureEng_'+ str(k) + 'mer.pickle'
     if exists(filename):  
         print('mixing k=',k,'...\n')
         new_KmerConstruct = pickle.load(open(filename,"rb" ))

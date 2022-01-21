@@ -11,7 +11,7 @@ if __name__ == '__main__':
     with open('load_silva_data.py') as infile:
         exec(infile.read()) #ss, genus_labels are given here   
 
-    filename='../kmer_feature_objects/NBmodel_mixed_mer.pickle'
+    filename='../kmer_feature_objects/KmerFeatureEng_all_mer.pickle'
     if exists(filename):        
         all_freq_dict = pickle.load(open(filename,"rb" ))
         

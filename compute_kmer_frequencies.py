@@ -7,7 +7,7 @@ from os.path import exists
 #os.chdir('/Users/ifanwu/Documents/CS_MS_TAMU/microbiota_ML/github') #macos only
 
 from utility import readFasta, get_label_list, get_accu_f1
-from KmerConstruct import KmerConstruct
+from KmerFeatureEng import KmerFeatureEng
 
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
@@ -26,14 +26,14 @@ if __name__ == '__main__':
     
     #construct kmer feature table 
     for k in ks:
-        filename='../KmerConstruct_'+ str(k) + 'mer.pickle'
+        filename='../kmer_feature_objects/KmerFeatureEng_'+ str(k) + 'mer.pickle'
         if not exists(filename):        
             #construct kmer feature table
-            new_KmerConstruct=KmerConstruct(ss,k,n_threads=1)
-            new_KmerConstruct.construct_all_freq_dict()
+            new_KmerFeatureEng=KmerFeatureEng(genus_labels,ss,k,n_threads=1)
+            new_KmerFeatureEng.construct_all_freq_dict()
             print('saving the file...')
             with open(filename,'wb') as handle:
-                pickle.dump(new_KmerConstruct, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(new_KmerFeatureEng, handle, protocol=pickle.HIGHEST_PROTOCOL)
             print('kmer freq for k=',k,' is done')
         
 

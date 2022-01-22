@@ -2,7 +2,7 @@
 
 import pickle
 
-new_KmerFeatureEng=pickle.load(open('../kmer_feature_objects/new_KmerFeatureEng_all_mer.pickle','rb'))
+new_KmerFeatureEng=pickle.load(open('../kmer_feature_objects/KmerFeatureEng_all_mer.pickle','rb'))
 new_KmerFeatureEng.construct_discrit_freq_dict(reamin=.5)
 
 

@@ -11,10 +11,10 @@ if __name__ == '__main__':
     with open('load_silva_data.py') as infile:
         exec(infile.read()) #ss, genus_labels are given here   
 
-    filename='../kmer_feature_objects/KmerFeatureEng_all_mer.pickle'
+    filename='../kmer_feature_objects/mixed_feature_lists.pickle'
     if exists(filename):        
         all_freq_dict = pickle.load(open(filename,"rb" ))
-        
+
         print('calculating n_features')
         n_features=len(set([key for dict_ in tqdm(all_freq_dict) for key in dict_]))
         

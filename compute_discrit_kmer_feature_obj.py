@@ -1,5 +1,6 @@
 #construct discrit mixed kmer obj based on discrit kmers from all kmers mixed
 from test_data import * #ss, genus_labels are given here
+from KmerFeatureEng import KmerFeatureEng
 import pickle
 
 print('loading all_freq_dict')

@@ -2,6 +2,7 @@
 from test_data import * #ss, genus_labels are given here
 import pickle
 
+print('loading all_freq_dict')
 all_freq_dict=pickle.load(open('../kmer_feature_objects/mixed_feature_lists.pickle','rb')) 
 
 
@@ -20,6 +21,7 @@ all_KmerFeatureEng.features=all_KmerFeatureEng.get_all_uniq_kmers(all_KmerFeatur
 
 
 remain=.5
+print('constructing discrit freq dict')
 all_KmerFeatureEng.construct_discrit_freq_dict(remain=remain)
 discrit_freq_dict=all_KmerFeatureEng.discrit_freq_dict
 

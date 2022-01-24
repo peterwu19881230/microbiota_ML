@@ -9,7 +9,7 @@ from KmerConstruct import KmerConstruct
 import numpy as np
 import pandas as pd
 from os.path import exists 
-
+from multiprocessing import Pool
 
 
 from tqdm import tqdm
@@ -30,82 +30,89 @@ def combine_diff_kmer_features(KmerConstruct_list):
 
 
 
-no_dataset=set([11,13,14,15,17,25]) #datasets skipped in tax-credit
-no_expected_tsv=set([1,2,6,7,8]) # no expected-sequence-taxonomies.tsv -> read matched-sequence-taxonomies.tsv instead
-ITS=set([9,10,24,26])
-ls=[]
-for i in range(1,26+1):
-    if i not in (no_dataset.union(ITS)):        
-        ls.append('mock-'+str(i))
-
-
-ks=[4,6,7,8,9,10,11,12,14,16,18,32,64,100]
-filename='../models/NBmodel_mix_kmer.pickle'
-model = pickle.load(open(filename,"rb" ))
-
-
-
-#construct test data
-all_mock_accu_f1={}
-for mock in ls: #diff between dna-sequences and expected-sequences?
-    print('--------------------- ')
-    print('Evaluating '+mock)
-    print('--------------------- ')
-    
-    two_test_mock_accu_f1={}
-    for seq_file in ['dna-sequences.fasta','expected-sequences.fasta']:
-        _,seq_mock=readFasta('../tax-credit-data/data/mock-community/'+mock+'/'+seq_file) 
+def evaluate(ls):
+    #construct test data
+    for mock in ls: #diff between dna-sequences and expected-sequences?
+        print('--------------------- ')
+        print('Evaluating '+mock)
+        print('--------------------- ')
         
-        
-        if mock in no_expected_tsv:
-        	file = '/expected-sequence-taxonomies.tsv'
-        else:
-            file = '/matched-sequence-taxonomies.tsv'
-            
-        taxonomy_table=pd.read_csv('../tax-credit-data/data/mock-community/'+mock+'/'+file,sep='\t')
-        labels=taxonomy_table['Standard Taxonomy'].tolist()
-        answers_=get_label_list(labels,type_='g__')
-        
-        
-        y_test=answers_
-        
-
-        
-        mock_accu_f1=[]
-        KmerConstruct_list=[]
-        
-        for k in ks:
-            KmerConstruct_mock=KmerConstruct(seq_mock,k=k,n_threads=1)
-            
-            try: #rep seqs for some mocks (eg. mock6) are less than k 
-                KmerConstruct_mock.construct_all_freq_dict()
-            except:
-                print('k='+ str(k) +' is larger than rep seqs')
-                continue
-            
-            KmerConstruct_list.append(KmerConstruct_mock)
-            
-        mixed_feature_lists=combine_diff_kmer_features(KmerConstruct_list)    
+        two_test_mock_accu_f1={}
+        for seq_file in ['dna-sequences.fasta','expected-sequences.fasta']:
+            _,seq_mock=readFasta('../tax-credit-data/data/mock-community/'+mock+'/'+seq_file) 
             
             
-        y_pred = model.test(mixed_feature_lists) 
-        accu,f1=get_accu_f1(y_pred,y_test)
-        mock_accu_f1.append([accu,f1])
-        two_test_mock_accu_f1[seq_file]=mock_accu_f1
-    all_mock_accu_f1[mock]=two_test_mock_accu_f1
+            if mock in no_expected_tsv:
+            	file = '/expected-sequence-taxonomies.tsv'
+            else:
+                file = '/matched-sequence-taxonomies.tsv'
                 
-                #print("Accuracy= ",accu," for k=",k) #grace won't print this
-                #print("F1= ",f1," for k=",k) #grace won't print this
-
-
-
-#save the numbers of evaluation 
-with open('../results/all_mock_mixed_all_kmers_accu_f1.pickle','wb') as handle:    
-    pickle.dump(all_mock_accu_f1, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-
-all_mock_accu_f1=pickle.load(open('../results/all_mock_mixed_all_kmers_accu_f1.pickle','rb'))
+            taxonomy_table=pd.read_csv('../tax-credit-data/data/mock-community/'+mock+'/'+file,sep='\t')
+            labels=taxonomy_table['Standard Taxonomy'].tolist()
+            answers_=get_label_list(labels,type_='g__')
+            
+            
+            y_test=answers_
+            
     
+            
+            mock_accu_f1=[]
+            KmerConstruct_list=[]
+            
+            for k in ks:
+                KmerConstruct_mock=KmerConstruct(seq_mock,k=k,n_threads=1)
+                
+                try: #rep seqs for some mocks (eg. mock6) are less than k 
+                    KmerConstruct_mock.construct_all_freq_dict()
+                except:
+                    print('k='+ str(k) +' is larger than rep seqs')
+                    continue
+                
+                KmerConstruct_list.append(KmerConstruct_mock)
+                
+            mixed_feature_lists=combine_diff_kmer_features(KmerConstruct_list)    
+                
+                
+            y_pred = model.test(mixed_feature_lists) 
+            accu,f1=get_accu_f1(y_pred,y_test)
+            mock_accu_f1.append([accu,f1])
+            two_test_mock_accu_f1[seq_file]=mock_accu_f1
+    
+    return two_test_mock_accu_f1
+
+
+if __name__ == '__main__':
+    
+    no_dataset=set([11,13,14,15,17,25]) #datasets skipped in tax-credit
+    no_expected_tsv=set([1,2,6,7,8]) # no expected-sequence-taxonomies.tsv -> read matched-sequence-taxonomies.tsv instead
+    ITS=set([9,10,24,26])
+    ls=[]
+    for i in range(1,26+1):
+        if i not in (no_dataset.union(ITS)):        
+            ls.append('mock-'+str(i))
+
+    #ls=['mock-1','mock-2'] #for test
+    ks=[4,6,7,8,9,10,11,12,14,16,18,32,64,100]
+    filename='../models/NBmodel_mix_kmer.pickle'
+    model = pickle.load(open(filename,"rb" ))
+    
+
+    n_threads=len(ls)
+    pool = Pool(n_threads)
+    all_mock_accu_f1_list=pool.map(evaluate,ks)
+    
+    all_mock_accu_f1={}
+    for i,mock in enumerate(ls):
+        all_mock_accu_f1[mock]=all_mock_accu_f1_list[i]
+    
+    
+    #save the numbers of evaluation 
+    with open('../results/all_mock_mixed_all_kmers_accu_f1.pickle','wb') as handle:    
+        pickle.dump(all_mock_accu_f1, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    
+    all_mock_accu_f1=pickle.load(open('../results/all_mock_mixed_all_kmers_accu_f1.pickle','rb'))
+        
 
 
 #Have to finish changing the following code...

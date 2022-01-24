@@ -30,53 +30,53 @@ def combine_diff_kmer_features(KmerConstruct_list):
 
 
 
-def evaluate(ls):
-    #construct test data
-    for mock in ls: #diff between dna-sequences and expected-sequences?
-        print('--------------------- ')
-        print('Evaluating '+mock)
-        print('--------------------- ')
-        
-        two_test_mock_accu_f1={}
-        for seq_file in ['dna-sequences.fasta','expected-sequences.fasta']:
-            _,seq_mock=readFasta('../tax-credit-data/data/mock-community/'+mock+'/'+seq_file) 
-            
-            
-            if mock in no_expected_tsv:
-            	file = '/expected-sequence-taxonomies.tsv'
-            else:
-                file = '/matched-sequence-taxonomies.tsv'
-                
-            taxonomy_table=pd.read_csv('../tax-credit-data/data/mock-community/'+mock+'/'+file,sep='\t')
-            labels=taxonomy_table['Standard Taxonomy'].tolist()
-            answers_=get_label_list(labels,type_='g__')
-            
-            
-            y_test=answers_
-            
+def evaluate(mock):
+#construct test data
     
+    print('--------------------- ')
+    print('Evaluating '+mock)
+    print('--------------------- ')
+    
+    two_test_mock_accu_f1={}
+    for seq_file in ['dna-sequences.fasta','expected-sequences.fasta']: #diff between dna-sequences and expected-sequences?
+        _,seq_mock=readFasta('../tax-credit-data/data/mock-community/'+mock+'/'+seq_file) 
+        
+        
+        if mock in no_expected_tsv:
+        	file = '/expected-sequence-taxonomies.tsv'
+        else:
+            file = '/matched-sequence-taxonomies.tsv'
             
-            mock_accu_f1=[]
-            KmerConstruct_list=[]
+        taxonomy_table=pd.read_csv('../tax-credit-data/data/mock-community/'+mock+'/'+file,sep='\t')
+        labels=taxonomy_table['Standard Taxonomy'].tolist()
+        answers_=get_label_list(labels,type_='g__')
+        
+        
+        y_test=answers_
+        
+
+        
+        mock_accu_f1=[]
+        KmerConstruct_list=[]
+        
+        for k in ks:
+            KmerConstruct_mock=KmerConstruct(seq_mock,k=k,n_threads=1)
             
-            for k in ks:
-                KmerConstruct_mock=KmerConstruct(seq_mock,k=k,n_threads=1)
-                
-                try: #rep seqs for some mocks (eg. mock6) are less than k 
-                    KmerConstruct_mock.construct_all_freq_dict()
-                except:
-                    print('k='+ str(k) +' is larger than rep seqs')
-                    continue
-                
-                KmerConstruct_list.append(KmerConstruct_mock)
-                
-            mixed_feature_lists=combine_diff_kmer_features(KmerConstruct_list)    
-                
-                
-            y_pred = model.test(mixed_feature_lists) 
-            accu,f1=get_accu_f1(y_pred,y_test)
-            mock_accu_f1.append([accu,f1])
-            two_test_mock_accu_f1[seq_file]=mock_accu_f1
+            try: #rep seqs for some mocks (eg. mock6) are less than k 
+                KmerConstruct_mock.construct_all_freq_dict()
+            except:
+                print('k='+ str(k) +' is larger than rep seqs')
+                continue
+            
+            KmerConstruct_list.append(KmerConstruct_mock)
+            
+        mixed_feature_lists=combine_diff_kmer_features(KmerConstruct_list)    
+            
+            
+        y_pred = model.test(mixed_feature_lists) 
+        accu,f1=get_accu_f1(y_pred,y_test)
+        mock_accu_f1.append([accu,f1])
+        two_test_mock_accu_f1[seq_file]=mock_accu_f1
     
     return two_test_mock_accu_f1
 
@@ -91,7 +91,6 @@ if __name__ == '__main__':
         if i not in (no_dataset.union(ITS)):        
             ls.append('mock-'+str(i))
 
-    #ls=['mock-1','mock-2'] #for test
     ks=[4,6,7,8,9,10,11,12,14,16,18,32,64,100]
     filename='../models/NBmodel_mix_kmer.pickle'
     model = pickle.load(open(filename,"rb" ))

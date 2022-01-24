@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     n_threads=len(ls)
     pool = Pool(n_threads)
-    all_mock_accu_f1_list=pool.map(evaluate,ks)
+    all_mock_accu_f1_list=pool.map(evaluate,ls)
     
     all_mock_accu_f1={}
     for i,mock in enumerate(ls):
